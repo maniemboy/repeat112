@@ -53,7 +53,7 @@ CSS = """
 }
 html,body,[class*="css"],[class*="st-"]{font-family:var(--sans);color:var(--ink);}
 .stApp{background:var(--bg)!important;}
-section[data-testid="stSidebar"]{display:none!important;}
+section[data-testid="stSidebar"]{background:#FFFFFF!important;border-right:1px solid #E5E7EB!important;}
 #MainMenu,footer,header,[data-testid="stToolbar"],[data-testid="stDecoration"]
 {display:none!important;visibility:hidden!important;}
 .block-container{padding:0!important;max-width:100%!important;}
@@ -263,12 +263,15 @@ def section_head(title: str, count: str = "", link_text: str = ""):
     )
 
 
-# ── 데이터 업로드 (숨은 expander) ─────────────────────
-with st.expander("🗂 데이터 업로드", expanded=False):
+# ── 데이터 업로드 (사이드바 스타일 숨김 처리) ─────────
+uploaded = None
+use_sample = True
+with st.sidebar:
+    st.markdown("**데이터 업로드**")
     uploaded = st.file_uploader("분석용 데이터 (xlsx/csv)", type=["xlsx", "csv"],
                                 label_visibility="collapsed")
-    use_sample = st.checkbox("샘플 데이터로 시연", value=True)
-    st.caption("🔒 비식별·최소화된 자료만 사용 · 개인정보(성명·연락처·정확 주소) 취급 없음")
+    use_sample = st.checkbox("샘플 데이터로 시연", value=uploaded is None)
+    st.caption("🔒 비식별·최소화된 자료만 사용")
 
 
 @st.cache_data
@@ -1094,24 +1097,22 @@ def render_briefing():
             st.rerun()
 
 
-mode_col1, mode_col2, mode_col3 = st.columns([6, 1, 1])
-mode = mode_col1.radio("", ["일반 대시보드", "교대 브리핑 모드"], horizontal=True,
-                       label_visibility="collapsed", key="mode_radio")
-
-if len(surge_suspects):
-    with mode_col3.expander(f"⚠ 제도변화 {len(surge_suspects)}건"):
-        for _, r in surge_suspects.iterrows():
-            checked = st.checkbox(
-                f"{r['사건종별']} ({r['과거비중_평균']}%→{r['최근비중_평균']}%, {r['최근시작']}부터)",
-                value=r["사건종별"] in st.session_state.confirmed_surge_types,
-                key=f"surge_{r['사건종별']}",
-                help="확인 체크 시에만 분석에서 실제로 제외됩니다.",
-            )
-            name = r["사건종별"]
-            if checked and name not in st.session_state.confirmed_surge_types:
-                st.session_state.confirmed_surge_types.append(name)
-            elif not checked and name in st.session_state.confirmed_surge_types:
-                st.session_state.confirmed_surge_types.remove(name)
+with st.sidebar:
+    st.markdown("---")
+    mode = st.radio("화면 모드", ["일반 대시보드", "교대 브리핑 모드"], index=0)
+    if len(surge_suspects):
+        with st.expander(f"⚠ 제도변화 의심 {len(surge_suspects)}건"):
+            for _, r in surge_suspects.iterrows():
+                checked = st.checkbox(
+                    f"{r['사건종별']} ({r['과거비중_평균']}%→{r['최근비중_평균']}%)",
+                    value=r["사건종별"] in st.session_state.confirmed_surge_types,
+                    key=f"surge_{r['사건종별']}",
+                )
+                name = r["사건종별"]
+                if checked and name not in st.session_state.confirmed_surge_types:
+                    st.session_state.confirmed_surge_types.append(name)
+                elif not checked and name in st.session_state.confirmed_surge_types:
+                    st.session_state.confirmed_surge_types.remove(name)
 
 if mode == "일반 대시보드":
     render_dashboard()
